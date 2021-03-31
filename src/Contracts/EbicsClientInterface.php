@@ -149,13 +149,13 @@ interface EbicsClientInterface
      * @param DateTimeInterface|null $startDateTime the start date of requested transactions
      * @param DateTimeInterface|null $endDateTime the end date of requested transactions
      *
-     * @return Response
+     * @return string
      */
     public function STA(
         DateTimeInterface $dateTime = null,
         DateTimeInterface $startDateTime = null,
         DateTimeInterface $endDateTime = null
-    ): Response;
+    ): string;
 
     /**
      * Retrieve the bank account statement in Camt.053 format.

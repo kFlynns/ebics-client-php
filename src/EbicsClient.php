@@ -16,9 +16,11 @@ use AndrewSvirin\Ebics\Models\Bank;
 use AndrewSvirin\Ebics\Models\Http\Request;
 use AndrewSvirin\Ebics\Models\Http\Response;
 use AndrewSvirin\Ebics\Models\KeyRing;
+use AndrewSvirin\Ebics\Models\OrderData;
 use AndrewSvirin\Ebics\Models\User;
 use AndrewSvirin\Ebics\Services\CryptService;
 use AndrewSvirin\Ebics\Services\HttpClient;
+use AndrewSvirin\Ebics\Services\ZipService;
 use DateTime;
 use DateTimeInterface;
 
@@ -297,14 +299,62 @@ final class EbicsClient implements EbicsClientInterface
         DateTimeInterface $dateTime = null,
         DateTimeInterface $startDateTime = null,
         DateTimeInterface $endDateTime = null
-    ): Response {
+    ): string {
+
         if (null === $dateTime) {
             $dateTime = new DateTime();
         }
-        $request = $this->requestFactory->createSTA($dateTime, $startDateTime, $endDateTime);
-        $response = $this->retrievePlainOrderData($request);
 
-        return $response;
+
+        $request = $this
+            ->requestFactory
+            ->createSTA(
+                $dateTime,
+                $startDateTime,
+                $endDateTime
+            );
+
+        $response = $this
+            ->httpClient
+            ->post($this->getBank()->getUrl(), $request);
+
+
+        $transaction = $this->responseHandler->retrieveTransaction($response);
+        $transactionId = $transaction->getId();
+        $transactionKey = $transaction->getKey();
+
+        $plainOrderDataEncrypted = $this->responseHandler->retrieveEncryptedOrderData($response);
+        $segmentNumber = 1;
+        $numSegments = $transaction->getNumSegments();
+
+        while($numSegments > $segmentNumber)
+        {
+
+            $request = $this->requestFactory->createTransferTransfer(
+                $transactionId,
+                $transactionKey,
+                new OrderData(),
+                ++$segmentNumber
+            );
+
+            $response = $this
+                ->httpClient
+                ->post($this->getBank()->getUrl(), $request);
+
+            $plainOrderDataEncrypted .= $this->responseHandler->retrieveEncryptedOrderData($response);
+
+        }
+
+
+        $plainOrderDataCompressed = $this->cryptService->decryptPlainOrderDataCompressed(
+            $this->getKeyRing(),
+            $plainOrderDataEncrypted,
+            $transactionKey
+        );
+
+        $zipService = new ZipService();
+        return $zipService->uncompress($plainOrderDataCompressed);
+
     }
 
     /**

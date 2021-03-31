@@ -220,6 +220,29 @@ class ResponseHandler
         return $plainOrderData;
     }
 
+
+    /**
+     * Retrieve encrypted OrderData.
+     *
+     * @param DOMDocument $xml
+     *
+     * @return string
+     * @throws EbicsException
+     */
+    public function retrieveEncryptedOrderData(DOMDocument $xml)
+    {
+        $xpath = $this->prepareH004XPath($xml);
+        $orderDataPath = $xpath->query('//H004:body/H004:DataTransfer/H004:OrderData');
+        if (!$orderDataPath || 0 === $orderDataPath->length) {
+            throw new EbicsException('EBICS response empty result.');
+        }
+        $plainOrderDataEncrypted = DOMHelper::safeItemValue($orderDataPath);
+
+        return $plainOrderDataEncrypted;
+    }
+
+
+
     /**
      * Extract Transaction from the DOM XML.
      *

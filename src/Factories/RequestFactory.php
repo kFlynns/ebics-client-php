@@ -719,6 +719,7 @@ class RequestFactory
                             ->addSecurityMedium(StaticBuilder::SECURITY_MEDIUM_0000);
                     })->addMutable(function (MutableBuilder $builder) {
                         $builder->addTransactionPhase(MutableBuilder::PHASE_INITIALIZATION);
+                        $builder->addSegmentNumber(1);
                     });
                 })->addBody();
             })
